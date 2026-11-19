@@ -1,0 +1,168 @@
+
+# SIMATS ENGINEERING
+# PYTHON PROGRAMMING - ASSIGNMENT 4
+# TASK 5: THE SAME UTILITY ORGANISED FOUR WAYS
+
+# ==========================================
+# (A) ONE SCRIPT
+# ==========================================
+
+def single_read_attendance(filename):
+    records = []
+
+    with open(filename, "r", encoding="utf-8") as file:
+        for line in file:
+            parts = line.strip().split(",")
+
+            if len(parts) == 2 and parts[1] in ("P", "A"):
+                records.append((parts[0], parts[1]))
+
+    return records
+
+
+def single_calculate_percentage(records):
+    students = {}
+
+    for reg_no, status in records:
+        students.setdefault(reg_no, [0, 0])
+        students[reg_no][1] += 1
+
+        if status == "P":
+            students[reg_no][0] += 1
+
+    return {
+        reg_no: present / total * 100
+        for reg_no, (present, total) in students.items()
+    }
+
+
+def single_write_report(percentages):
+    with open("single_report.txt", "w", encoding="utf-8") as file:
+        for reg_no, percentage in percentages.items():
+            file.write(f"{reg_no}: {percentage:.2f}%\n")
+
+    with open("single_below75.txt", "w", encoding="utf-8") as file:
+        for reg_no, percentage in percentages.items():
+            if percentage < 75:
+                file.write(f"{reg_no}: {percentage:.2f}%\n")
+
+
+# ==========================================
+# (B) ONE MODULE
+# ==========================================
+
+def module_read_attendance(filename):
+    return single_read_attendance(filename)
+
+
+def module_calculate_percentage(records):
+    return single_calculate_percentage(records)
+
+
+def module_write_report(percentages):
+    single_write_report(percentages)
+
+
+# ==========================================
+# (C) THREE MODULES IN ONE FOLDER
+# ==========================================
+
+def reader_module(filename):
+    return single_read_attendance(filename)
+
+
+def stats_module(records):
+    return single_calculate_percentage(records)
+
+
+def report_module(percentages):
+    with open("three_module_report.txt", "w", encoding="utf-8") as file:
+        for reg_no, percentage in percentages.items():
+            file.write(f"{reg_no}: {percentage:.2f}%\n")
+
+    with open("three_module_below75.txt", "w", encoding="utf-8") as file:
+        for reg_no, percentage in percentages.items():
+            if percentage < 75:
+                file.write(f"{reg_no}: {percentage:.2f}%\n")
+
+
+# ==========================================
+# (D) PACKAGE ORGANISATION
+# ==========================================
+
+class AttendancePackage:
+
+    @staticmethod
+    def reader(filename):
+        return single_read_attendance(filename)
+
+    @staticmethod
+    def stats(records):
+        return single_calculate_percentage(records)
+
+    @staticmethod
+    def report(percentages):
+        with open("package_report.txt", "w", encoding="utf-8") as file:
+            for reg_no, percentage in percentages.items():
+                file.write(f"{reg_no}: {percentage:.2f}%\n")
+
+        with open("package_below75.txt", "w", encoding="utf-8") as file:
+            for reg_no, percentage in percentages.items():
+                if percentage < 75:
+                    file.write(f"{reg_no}: {percentage:.2f}%\n")
+
+
+# ==========================================
+# MAIN PROGRAM
+# ==========================================
+
+def main():
+
+    # Create sample attendance file
+    data = """192311001,P
+192311001,P
+192311001,A
+192311002,P
+192311002,A
+192311003,A
+192311003,A
+192311004,P
+"""
+
+    with open("attendance.txt", "w", encoding="utf-8") as file:
+        file.write(data)
+
+    # A. One Script
+    records = single_read_attendance("attendance.txt")
+    percentages = single_calculate_percentage(records)
+    single_write_report(percentages)
+    print("\nA. ONE SCRIPT COMPLETED")
+
+    # B. One Module
+    records = module_read_attendance("attendance.txt")
+    percentages = module_calculate_percentage(records)
+    module_write_report(percentages)
+    print("B. ONE MODULE COMPLETED")
+
+    # C. Three Modules
+    records = reader_module("attendance.txt")
+    percentages = stats_module(records)
+    report_module(percentages)
+    print("C. THREE MODULES COMPLETED")
+
+    # D. Package
+    records = AttendancePackage.reader("attendance.txt")
+    percentages = AttendancePackage.stats(records)
+    AttendancePackage.report(percentages)
+    print("D. PACKAGE ORGANISATION COMPLETED")
+
+    print("\nATTENDANCE PERCENTAGE")
+
+    for reg_no, percentage in percentages.items():
+        print(f"{reg_no}: {percentage:.2f}%")
+
+    print("\nALL REPORTS GENERATED SUCCESSFULLY")
+
+
+if __name__ == "__main__":
+    main()
