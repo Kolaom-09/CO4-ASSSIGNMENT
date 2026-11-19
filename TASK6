@@ -1,0 +1,309 @@
+
+# SIMATS ENGINEERING
+# PYTHON PROGRAMMING - ASSIGNMENT 4
+# TASK 6: COLLEGE FEST REGISTRATION DESK
+
+import os
+
+
+class InvalidRecord(Exception):
+    pass
+
+
+# ==========================================
+# VALIDATE REGISTRATION
+# ==========================================
+
+def validate_record(line):
+
+    parts = line.strip().split(",")
+
+    if len(parts) != 5:
+        raise InvalidRecord("Invalid number of fields")
+
+    reg_no, name, department, email, events = parts
+
+    if not all(value.strip() for value in parts):
+        raise InvalidRecord("Empty field found")
+
+    if email.count("@") != 1:
+        raise InvalidRecord("Invalid email address")
+
+    username, domain = email.split("@")
+
+    if not username or "." not in domain:
+        raise InvalidRecord("Invalid email format")
+
+    if domain.startswith(".") or domain.endswith("."):
+        raise InvalidRecord("Invalid email domain")
+
+    event_list = [
+        event.strip()
+        for event in events.split(";")
+        if event.strip()
+    ]
+
+    if not event_list:
+        raise InvalidRecord("No events selected")
+
+    return {
+        "reg_no": reg_no.strip(),
+        "name": name.strip(),
+        "department": department.strip(),
+        "email": email.strip(),
+        "events": event_list
+    }
+
+
+# ==========================================
+# READ DEPARTMENT FILES
+# ==========================================
+
+def read_files(folder):
+
+    records = []
+    errors = []
+
+    for i in range(1, 6):
+
+        filename = f"department{i}.txt"
+        filepath = os.path.join(folder, filename)
+
+        try:
+            with open(filepath, "r", encoding="utf-8") as file:
+
+                for line_number, line in enumerate(file, start=1):
+
+                    records.append(
+                        (filename, line_number, line.strip())
+                    )
+
+        except FileNotFoundError:
+            errors.append(
+                f"{filename}: File not found"
+            )
+
+        except PermissionError:
+            errors.append(
+                f"{filename}: Permission denied"
+            )
+
+        except UnicodeDecodeError:
+            errors.append(
+                f"{filename}: Invalid file encoding"
+            )
+
+        except OSError as error:
+            errors.append(
+                f"{filename}: {error}"
+            )
+
+    return records, errors
+
+
+# ==========================================
+# PROCESS REGISTRATIONS
+# ==========================================
+
+def process_records(records, errors):
+
+    master = []
+    seen = set()
+    event_participants = {}
+
+    for filename, line_number, line in records:
+
+        try:
+
+            student = validate_record(line)
+
+            reg_no = student["reg_no"]
+
+            if reg_no in seen:
+                raise InvalidRecord("Duplicate registration")
+
+            seen.add(reg_no)
+
+            master.append(student)
+
+            for event in student["events"]:
+
+                event_participants.setdefault(event, [])
+
+                event_participants[event].append(student)
+
+        except InvalidRecord as error:
+
+            errors.append(
+                f"{filename}, Line {line_number}: {error}"
+            )
+
+    return master, event_participants, errors
+
+
+# ==========================================
+# GENERATE OUTPUT REPORTS
+# ==========================================
+
+def generate_reports(master, event_participants, errors):
+
+    output_folder = "output"
+
+    os.makedirs(output_folder, exist_ok=True)
+
+    # MASTER LIST
+    with open(
+        os.path.join(output_folder, "master_list.txt"),
+        "w",
+        encoding="utf-8"
+    ) as file:
+
+        file.write(
+            "REGISTER NO,NAME,DEPARTMENT,EMAIL,EVENTS\n"
+        )
+
+        for student in master:
+
+            file.write(
+                f"{student['reg_no']},"
+                f"{student['name']},"
+                f"{student['department']},"
+                f"{student['email']},"
+                f"{';'.join(student['events'])}\n"
+            )
+
+    # EVENT-WISE PARTICIPANTS
+    for event, students in event_participants.items():
+
+        safe_event = "".join(
+            ch if ch.isalnum() or ch in "-_" else "_"
+            for ch in event
+        )
+
+        filename = f"{safe_event}.txt"
+
+        with open(
+            os.path.join(output_folder, filename),
+            "w",
+            encoding="utf-8"
+        ) as file:
+
+            file.write(f"EVENT: {event}\n")
+
+            for student in students:
+
+                file.write(
+                    f"{student['reg_no']},"
+                    f"{student['name']},"
+                    f"{student['email']}\n"
+                )
+
+    # SUMMARY REPORT
+    with open(
+        os.path.join(output_folder, "summary.txt"),
+        "w",
+        encoding="utf-8"
+    ) as file:
+
+        file.write("COLLEGE FEST SUMMARY\n")
+        file.write("====================\n")
+
+        file.write(
+            f"Total registrations: {len(master)}\n"
+        )
+
+        file.write(
+            f"Total events: {len(event_participants)}\n"
+        )
+
+        for event, students in sorted(event_participants.items()):
+
+            file.write(
+                f"{event}: {len(students)} participants\n"
+            )
+
+    # ERROR LOG
+    with open(
+        os.path.join(output_folder, "error.log"),
+        "w",
+        encoding="utf-8"
+    ) as file:
+
+        for error in errors:
+            file.write(error + "\n")
+
+
+# ==========================================
+# MAIN PROGRAM
+# ==========================================
+
+def main():
+
+    input_folder = "input"
+
+    os.makedirs(input_folder, exist_ok=True)
+
+    # Create sample input files
+    sample_data = {
+
+        "department1.txt": [
+            "192311001,Arun,CSE,arun@gmail.com,Singing;Dancing",
+            "192311002,Bala,ECE,bala@gmail.com,Dancing;Drama",
+            "192311003,Charan,IT,charan@gmail.com,Photography"
+        ],
+
+        "department2.txt": [
+            "192311004,David,EEE,david@gmail.com,Singing;Drama",
+            "192311005,Eswar,CSE,eswar@gmail.com,Photography"
+        ],
+
+        "department3.txt": [
+            "192311001,Arun,CSE,arun@gmail.com,Singing",
+            "192311006,Frank,IT,frankgmail.com,Dancing",
+            "192311007,Gokul,ECE,gokul@gmail.com"
+        ],
+
+        "department4.txt": [
+            "192311008,Hari,CSE,hari@gmail.com,Drama;Singing",
+            "192311009,Imran,IT,imran@gmail.com,Photography"
+        ]
+
+        # department5.txt intentionally missing
+    }
+
+    for filename, lines in sample_data.items():
+
+        filepath = os.path.join(input_folder, filename)
+
+        with open(filepath, "w", encoding="utf-8") as file:
+
+            file.write("\n".join(lines) + "\n")
+
+    # READ FILES
+    records, errors = read_files(input_folder)
+
+    # PROCESS RECORDS
+    master, event_participants, errors = process_records(
+        records, errors
+    )
+
+    # GENERATE REPORTS
+    generate_reports(master, event_participants, errors)
+
+    # DISPLAY RESULTS
+    print("\nCOLLEGE FEST REGISTRATION PROCESSING")
+    print("------------------------------------")
+
+    print("Valid Registrations:", len(master))
+
+    print("Total Events:", len(event_participants))
+
+    print("Errors Found:", len(errors))
+
+    print("\nReports generated successfully.")
+
+    print("\nOutput files saved in output folder.")
+
+
+if __name__ == "__main__":
+    main()
