@@ -1,0 +1,66 @@
+import os
+from collections import defaultdict
+
+
+def process_attendance(folder):
+    attendance = defaultdict(lambda: [0, 0])
+    errors = []
+
+    try:
+        files = sorted(
+            f for f in os.listdir(folder)
+            if f.endswith(".txt")
+        )
+
+        for filename in files:
+            filepath = os.path.join(folder, filename)
+
+            with open(filepath, "r", encoding="utf-8") as file:
+                for line_number, line in enumerate(file, start=1):
+                    try:
+                        parts = line.strip().split(",")
+
+                        if len(parts) != 3:
+                            raise ValueError("Invalid number of fields")
+
+                        reg_no, date, status = parts
+
+                        if status not in ("P", "A"):
+                            raise ValueError("Invalid attendance status")
+
+                        attendance[reg_no][1] += 1
+
+                        if status == "P":
+                            attendance[reg_no][0] += 1
+
+                    except ValueError as error:
+                        errors.append(
+                            f"{filename}, Line {line_number}: {error}"
+                        )
+
+    except FileNotFoundError:
+        print("Attendance folder not found")
+        return
+
+    with open("attendance_report.txt", "w", encoding="utf-8") as report:
+        report.write("REGISTER NO,ATTENDANCE %,STATUS\n")
+
+        for reg_no, counts in sorted(attendance.items()):
+            present, total = counts
+            percentage = (present / total) * 100
+
+            status = "Below 75%" if percentage < 75 else "Eligible"
+
+            report.write(
+                f"{reg_no},{percentage:.2f}%,{status}\n"
+            )
+
+    with open("damaged_records.txt", "w", encoding="utf-8") as error_file:
+        error_file.write("\n".join(errors))
+
+    print("Attendance processing completed.")
+    print("Reports generated successfully.")
+
+
+if __name__ == "__main__":
+    process_attendance("attendance")
